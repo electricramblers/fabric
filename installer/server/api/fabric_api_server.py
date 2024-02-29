@@ -12,9 +12,11 @@ from importlib import resources
 
 app = Flask(__name__)
 
+
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "The requested resource was not found."}), 404
+
 
 @app.errorhandler(500)
 def server_error(e):
@@ -47,7 +49,7 @@ users = json.loads(users)
 
 # The function to check if the token is valid
 def auth_required(f):
-    """    Decorator function to check if the token is valid.
+    """Decorator function to check if the token is valid.
 
     Args:
         f: The function to be decorated
@@ -58,7 +60,7 @@ def auth_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        """        Decorated function to handle authentication token and API endpoint.
+        """Decorated function to handle authentication token and API endpoint.
 
         Args:
             *args: Variable length argument list.
@@ -95,7 +97,7 @@ def auth_required(f):
 
 # Check for a valid token/user for the given route
 def check_auth_token(token, route):
-    """    Check if the provided token is valid for the given route and return the corresponding user.
+    """Check if the provided token is valid for the given route and return the corresponding user.
 
     Args:
         token (str): The token to be checked for validity.
@@ -118,7 +120,7 @@ ALLOWLIST_PATTERN = re.compile(r"^[a-zA-Z0-9\s.,;:!?\-]+$")
 
 # Sanitize the content, sort of. Prompt injection is the main threat so this isn't a huge deal
 def sanitize_content(content):
-    """    Sanitize the content by removing characters that do not match the ALLOWLIST_PATTERN.
+    """Sanitize the content by removing characters that do not match the ALLOWLIST_PATTERN.
 
     Args:
         content (str): The content to be sanitized.
@@ -132,7 +134,7 @@ def sanitize_content(content):
 
 # Pull the URL content's from the GitHub repo
 def fetch_content_from_url(url):
-    """    Fetches content from the given URL.
+    """Fetches content from the given URL.
 
     Args:
         url (str): The URL from which to fetch content.
@@ -156,17 +158,22 @@ def fetch_content_from_url(url):
 ## APIs
 # Make path mapping flexible and scalable
 pattern_path_mappings = {
-    "extwis": {"system_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/extract_wisdom/system.md",
-               "user_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/extract_wisdom/user.md"},
-    "summarize": {"system_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/summarize/system.md",
-                  "user_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/summarize/user.md"}
-} # Add more pattern with your desire path as a key in this dictionary
+    "extwis": {
+        "system_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/extract_wisdom/system.md",
+        "user_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/extract_wisdom/user.md",
+    },
+    "summarize": {
+        "system_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/summarize/system.md",
+        "user_url": "https://raw.githubusercontent.com/danielmiessler/fabric/main/patterns/summarize/user.md",
+    },
+}  # Add more pattern with your desire path as a key in this dictionary
+
 
 # /<pattern>
 @app.route("/<pattern>", methods=["POST"])
 @auth_required  # Require authentication
 def milling(pattern):
-    """    Combine fabric pattern with input from user and send to OpenAI's GPT-4 model.
+    """Combine fabric pattern with input from user and send to OpenAI's GPT-4 model.
 
     Returns:
         JSON: A JSON response containing the generated response or an error message.
@@ -196,6 +203,10 @@ def milling(pattern):
     system_message = {"role": "system", "content": system_content}
     user_message = {"role": "user", "content": user_file_content + "\n" + input_data}
     messages = [system_message, user_message]
+
+    # -------------------------------------------------------------------------------
+    #  DIL OpenAI
+    # -------------------------------------------------------------------------------
     try:
         response = openai.chat.completions.create(
             model="gpt-4-1106-preview",
@@ -209,7 +220,10 @@ def milling(pattern):
         return jsonify({"response": assistant_message})
     except Exception as e:
         app.logger.error(f"Error occurred: {str(e)}")
-        return jsonify({"error": "An error occurred while processing the request."}), 500
+        return (
+            jsonify({"error": "An error occurred while processing the request."}),
+            500,
+        )
 
 
 @app.route("/register", methods=["POST"])
@@ -222,14 +236,13 @@ def register():
     if username in users:
         return jsonify({"error": "Username already exists"}), 400
 
-    new_user = {
-        "username": username,
-        "password": password
-    }
+    new_user = {"username": username, "password": password}
 
     users[username] = new_user
 
-    token = jwt.encode({"username": username}, os.getenv("JWT_SECRET"), algorithm="HS256")
+    token = jwt.encode(
+        {"username": username}, os.getenv("JWT_SECRET"), algorithm="HS256"
+    )
 
     return jsonify({"token": token.decode("utf-8")})
 
@@ -243,7 +256,9 @@ def login():
 
     if username in users and users[username]["password"] == password:
         # Generate a JWT token
-        token = jwt.encode({"username": username}, os.getenv("JWT_SECRET"), algorithm="HS256")
+        token = jwt.encode(
+            {"username": username}, os.getenv("JWT_SECRET"), algorithm="HS256"
+        )
 
         return jsonify({"token": token.decode("utf-8")})
 
